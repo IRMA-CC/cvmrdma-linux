@@ -196,18 +196,9 @@ static int UVERBS_HANDLER(MLX5_IB_METHOD_ALLOC_PUBLIC_MEM)(struct uverbs_attr_bu
 	struct ib_ucontext * ctxt = NULL;
 	struct device * dma_dev = NULL;
 
-	pr_info("MLX5_IB_METHOD_ALLOC_PUBLIC_MEM\n");
-	pr_info("attrs = %p\n", attrs);
-	pr_info("attrs->context = %p\n", attrs->context);
-
 	/* Global method: attrs->context is NOT defined properly!*/
 	ctxt = ib_uverbs_get_ucontext(attrs);
 	dma_dev = ctxt->device->dma_device;
-
-	pr_info("ib_uverbs_get_ucontext(attrs) = %p\n", ctxt);
-
-
-	dev_info(dma_dev, "uverbs_get_const\n");
 
 	ret = uverbs_get_const(&flags, attrs, MLX5_IB_ATTR_ALLOC_PUBLIC_MEM_FLAGS);
 	if(ret)
@@ -231,7 +222,7 @@ static int UVERBS_HANDLER(MLX5_IB_METHOD_ALLOC_PUBLIC_MEM)(struct uverbs_attr_bu
 		goto ret;
 	}
 
-	dev_info(dma_dev, "returning dmabuf fd %d to caller\n", pm_fd);
+	dev_dbg(dma_dev, "returning public dmabuf fd %d\n", pm_fd);
 
 	ret = uverbs_copy_to(attrs, MLX5_IB_ATTR_ALLOC_PUBLIC_MEM_FD,
 		&pm_fd,

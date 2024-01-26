@@ -160,7 +160,7 @@ int pubmem_dmabuf_alloc(struct device * dma_dev, unsigned long len, unsigned lon
     priv->cpu_addr = va;
     priv->dma_addr = dma_addr;
 
-    dev_info(dma_dev, "Allocated %lu bytes in SWIOTLB\n", len);
+    dev_dbg(dma_dev, "Allocated %lu bytes in SWIOTLB\n", len);
 
 
 	exp_info.ops = &pubmem_dmabuf_ops;
