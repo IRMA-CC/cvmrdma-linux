@@ -181,8 +181,6 @@ static int system_heap_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 {
 	struct system_heap_buffer *buffer = dmabuf->priv;
 
-	dma_resv_assert_held(dmabuf->resv);
-
 	return dma_mmap_coherent(buffer->dev, vma, buffer->cpu_addr, buffer->dma_addr, buffer->len);
 }
 
