@@ -59,6 +59,10 @@ static gfp_t dma_direct_optimal_gfp_mask(struct device *dev, u64 *phys_limit)
 	 * zones.
 	 */
 	*phys_limit = dma_to_phys(dev, dma_limit);
+
+	// printk(KERN_ERR "[KERNEL] dma_limit: %llu, phys_limit: %llu dma_bit_mask(zone_dma_bits): %llu, dma_bit_mask(32): %llu\n", 
+	// dma_limit, *phys_limit, DMA_BIT_MASK(zone_dma_bits), DMA_BIT_MASK(32)); 
+
 	if (*phys_limit <= DMA_BIT_MASK(zone_dma_bits))
 		return GFP_DMA;
 	if (*phys_limit <= DMA_BIT_MASK(32))
@@ -124,21 +128,37 @@ static struct page *__dma_direct_alloc_pages(struct device *dev, size_t size,
 
 	WARN_ON_ONCE(!PAGE_ALIGNED(size));
 
-	if (is_swiotlb_for_alloc(dev))
+#ifdef CONFIG_DMA_RESTRICTED_POOL
+	printk(KERN_ERR "[KERNEL] CONFIG_DMA_RESTRICTED_POOL is enabled\n");
+#endif
+#ifndef CONFIG_ARCH_DMA_ADDR_T_64BIT
+	printk(KERN_ERR "[KERNEL] CONFIG_ARCH_DMA_ADDR_T_64BIT is not enabled\n");
+#endif
+#ifndef CONFIG_PHYS_ADDR_T_64BIT
+	printk(KERN_ERR "[KERNEL] CONFIG_PHYS_ADDR_T_64BIT is not enabled\n");
+#endif
+
+	if (is_swiotlb_for_alloc(dev)) {
+		printk(KERN_ERR "[KERNEL] is_swiotlb_for_alloc(dev) is true\n");
 		return dma_direct_alloc_swiotlb(dev, size);
+	}
 
 	gfp |= dma_direct_optimal_gfp_mask(dev, &phys_limit);
 	page = dma_alloc_contiguous(dev, size, gfp);
 	if (page) {
+		// printk(KERN_ERR "[KERNEL] page is not NULL\n");
 		if (!dma_coherent_ok(dev, page_to_phys(page), size) ||
 		    (!allow_highmem && PageHighMem(page))) {
+			// printk(KERN_ERR "[KERNEL] dma_coherent_ok is false\n");
 			dma_free_contiguous(dev, page, size);
 			page = NULL;
 		}
 	}
 again:
-	if (!page)
+	if (!page) {
+		// printk(KERN_ERR "[KERNEL] page is NULL\n");
 		page = alloc_pages_node(node, gfp, get_order(size));
+	}
 	if (page && !dma_coherent_ok(dev, page_to_phys(page), size)) {
 		dma_free_contiguous(dev, page, size);
 		page = NULL;
@@ -155,6 +175,8 @@ again:
 			goto again;
 		}
 	}
+
+	// printk(KERN_ERR "[KERNEL] returning page %p, size %zu, allow_highmem %d\n", page, size, allow_highmem);
 
 	return page;
 }

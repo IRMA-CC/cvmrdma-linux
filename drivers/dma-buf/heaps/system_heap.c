@@ -48,7 +48,7 @@ struct dma_heap_attachment {
 static const unsigned int orders[] = {8, 4, 0};
 #define NUM_ORDERS ARRAY_SIZE(orders)
 
-static struct sg_table *new_sg_table_single(void)
+static struct sg_table *new_sg_table(unsigned int nents)
 {
 	struct sg_table *new_table;
 	int ret;
@@ -57,7 +57,7 @@ static struct sg_table *new_sg_table_single(void)
 	if (!new_table)
 		return ERR_PTR(-ENOMEM);
 
-	ret = sg_alloc_table(new_table, 1, GFP_KERNEL);
+	ret = sg_alloc_table(new_table, nents, GFP_KERNEL);
 	if (ret) {
 		kfree(new_table);
 		return ERR_PTR(-ENOMEM);
@@ -77,13 +77,13 @@ static int system_heap_attach(struct dma_buf *dmabuf,
 	if (!a)
 		return -ENOMEM;
 
-	table = new_sg_table_single();
-	if (IS_ERR(table)) {
-		kfree(a);
-		return -ENOMEM;
-	}
+	// table = new_sg_table_single();
+	// if (IS_ERR(table)) {
+	// 	kfree(a);
+	// 	return -ENOMEM;
+	// }
 
-	a->table = table;
+	// a->table = table;
 	INIT_LIST_HEAD(&a->list);
 	a->mapped = false;
 
@@ -119,19 +119,39 @@ static struct sg_table *system_heap_map_dma_buf(struct dma_buf_attachment *attac
 	struct system_heap_buffer *buffer = dmabuf->priv;
 
 	struct dma_heap_attachment *a = attachment->priv;
-	struct sg_table *table = a->table;
+	struct sg_table *table;
 	void * cpu_addr;
 	dma_addr_t dma_addr;
 	int ret;
 
+	mutex_lock(&buffer->lock);
+
+	const unsigned int MAX_SIZE = 0xfffff000; // 0xffffffff - (0xffffffff%4096)
+	unsigned int nents = buffer->len / MAX_SIZE;
+	if(buffer->len % MAX_SIZE) {
+		nents++;
+	}
+
+	table = new_sg_table(nents);
+	if (IS_ERR(table)) {
+		kfree(a);
+		return -ENOMEM;
+	}
+	a->table = table;
+
+
+
+
+
+
 	/* As recommended in kernel doc: do the allocation on first map! Normally by 
 	   collating the requirements, but here should work for any device. */
-	mutex_lock(&buffer->lock);
 	if(! buffer->cpu_addr)
 	{
 		cpu_addr = dma_alloc_coherent(attachment->dev, buffer->len, &dma_addr, GFP_HIGHUSER);
 		if(IS_ERR(cpu_addr))
 		{
+			// printk(KERN_ERR "[KERNEL SYSTEM_HEAP] Failed to allocate memory\n");
 			return cpu_addr;
 		}
 
@@ -147,11 +167,32 @@ static struct sg_table *system_heap_map_dma_buf(struct dma_buf_attachment *attac
 
 
 	/* fill the dummy table */
-	table->sgl->length = buffer->len;
-	sg_set_buf(table->sgl, cpu_addr, buffer->len);
-	sg_dma_address(table->sgl) = dma_addr;
-	sg_dma_len(table->sgl) = buffer->len; 
+	// printk(KERN_ERR "[KERNEL SYSTEM_HEAP] cpu_addr: %p, dma_addr: %lu\n", cpu_addr, dma_addr);
+	// printk(KERN_ERR "[KERNEL SYSTEM_HEAP] buffer->len: %lu, dma_addr: %lu sizeof(table->sgl->length): %lu\n", 
+	// buffer->len, dma_addr, sizeof(table->sgl->length));
 
+	// Iterate over entries in the table
+	unsigned int i = 0;
+	struct scatterlist *sg;
+	unsigned int len;
+	for_each_sgtable_sg(table, sg, i) {
+		if (i == nents - 1)
+			len = buffer->len % MAX_SIZE;
+		else
+			len = MAX_SIZE;
+
+		// printk(KERN_ERR "[KERNEL SYSTEM_HEAP] sg: %p, i: %d, nents: %d, len: %u\n", sg, i, nents, len);
+
+		sg_set_buf(sg, cpu_addr + i*MAX_SIZE, len);
+		sg_dma_address(sg) = dma_addr + i*MAX_SIZE;
+		sg_dma_len(sg) = len;
+		i++;
+	}
+
+
+	// sg_set_buf(table->sgl, cpu_addr, buffer->len);
+	// sg_dma_address(table->sgl) = dma_addr;
+	// sg_dma_len(table->sgl) = buffer->len; 
 
 	a->mapped = true;
 	return table;

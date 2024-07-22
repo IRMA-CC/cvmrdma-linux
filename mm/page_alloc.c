@@ -4656,8 +4656,15 @@ struct page *__alloc_pages_noprof(gfp_t gfp, unsigned int order,
 	 * There are several places where we assume that the order value is sane
 	 * so bail out early if the request is out of bound.
 	 */
-	if (WARN_ON_ONCE_GFP(order > MAX_PAGE_ORDER, gfp))
+	if (WARN_ON_ONCE_GFP(order > MAX_PAGE_ORDER, gfp)) {
+		printk(KERN_ERR "[KERNEL PAGE_ALLOC] order %u >= MAX_ORDER %u\n", order, MAX_PAGE_ORDER);
 		return NULL;
+	}
+	if (order > MAX_PAGE_ORDER) {
+		printk(KERN_ERR "[KERNEL PAGE_ALLOC] order %u >= MAX_ORDER %u\n", order, MAX_PAGE_ORDER);
+		return NULL;
+	}
+
 
 	gfp &= gfp_allowed_mask;
 	/*

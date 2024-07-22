@@ -427,11 +427,16 @@ struct page *cma_alloc(struct cma *cma, unsigned long count,
 
 	trace_cma_alloc_start(name, count, align);
 
-	if (!cma || !cma->count || !cma->bitmap)
+	if (!cma || !cma->count || !cma->bitmap) {
+		// printk(KERN_ERR "[KERNEL CMA] %s(!cma || !cma->count || !cma->bitmap): count %lu, align %d\n", __func__, count, align);
 		return page;
+	}
 
 	pr_debug("%s(cma %p, name: %s, count %lu, align %d)\n", __func__,
 		(void *)cma, cma->name, count, align);
+	
+	// printk(KERN_ERR "[KERNEL CMA] %s(cma %p, name: %s, count %lu, align %d)\n", __func__,
+	// 	(void *)cma, cma->name, count, align);
 
 	if (!count)
 		return page;
@@ -501,6 +506,7 @@ struct page *cma_alloc(struct cma *cma, unsigned long count,
 	}
 
 	pr_debug("%s(): returned %p\n", __func__, page);
+	// printk(KERN_ERR "[KERNEL CMA] %s(): returned %p\n", __func__, page);
 	trace_cma_alloc_finish(name, pfn, page, count, align, ret);
 	if (page) {
 		count_vm_event(CMA_ALLOC_SUCCESS);

@@ -719,10 +719,16 @@ static int pagefault_dmabuf_mr(struct mlx5_ib_mr *mr, size_t bcnt,
 	if (err)
 		return err;
 
-	if (bytes_mapped)
-		*bytes_mapped += bcnt;
+	int num_pages = ib_umem_num_pages(mr->umem);
 
-	return ib_umem_num_pages(mr->umem);
+	if (bytes_mapped) {
+		*bytes_mapped += bcnt;
+		// printk("[KERNEL] mlx5_ib: pagefault_dmabuf_mr: bcnt=%lu, bytes_mapped=%u, num_pages=%d\n", bcnt, *bytes_mapped, num_pages);
+	} else {
+		// printk("[KERNEL] mlx5_ib: pagefault_dmabuf_mr: bcnt=%lu, num_pages=%d\n", bcnt, num_pages);
+	}
+
+	return num_pages;
 }
 
 /*

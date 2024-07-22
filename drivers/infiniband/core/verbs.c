@@ -294,6 +294,7 @@ struct ib_pd *__ib_alloc_pd(struct ib_device *device, unsigned int flags,
 		mr_access_flags |= IB_ACCESS_REMOTE_READ | IB_ACCESS_REMOTE_WRITE;
 	}
 
+	// printk(KERN_INFO "[KERNEL VERBS] %s: pd %p\n", __func__, pd);
 	if (mr_access_flags) {
 		struct ib_mr *mr;
 

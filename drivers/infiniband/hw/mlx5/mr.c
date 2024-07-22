@@ -1522,6 +1522,8 @@ struct ib_mr *mlx5_ib_reg_user_mr_dmabuf(struct ib_pd *pd, u64 offset,
 	mlx5_ib_dbg(dev,
 		    "offset 0x%llx, virt_addr 0x%llx, length 0x%llx, fd %d, access_flags 0x%x\n",
 		    offset, virt_addr, length, fd, access_flags);
+	// printk("[KERNEL] offset 0x%llx, virt_addr 0x%llx, length 0x%llx, fd %d, access_flags 0x%x\n",
+	// 	    offset, virt_addr, length, fd, access_flags);
 
 	/* dmabuf requires xlt update via umr to work. */
 	if (!mlx5r_umr_can_load_pas(dev, length))

@@ -24,6 +24,13 @@ static int pubmem_attach(struct dma_buf *dmabuf,
     struct scatterlist * sgl;
     int ret;
 
+    if(dmabuf->size >= 0xffffffff)
+    {
+        printk(KERN_ERR "pubmem: size %lu too large\n", dmabuf->size);
+        ret = -EINVAL;
+        goto ret;
+    }
+
     if(attachment->dev != priv->dma_dev)
     {
         ret = -EINVAL;
