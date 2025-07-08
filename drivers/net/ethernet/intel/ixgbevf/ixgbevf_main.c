@@ -549,21 +549,23 @@ static void ixgbevf_put_rx_buffer(struct ixgbevf_ring *rx_ring,
 				  struct ixgbevf_rx_buffer *rx_buffer,
 				  struct sk_buff *skb)
 {
-	if (ixgbevf_can_reuse_rx_page(rx_buffer)) {
+	dma_unmap_page_attrs(rx_ring->dev, rx_buffer->dma,
+					     ixgbevf_rx_pg_size(rx_ring),
+					     DMA_FROM_DEVICE,
+					     IXGBEVF_RX_DMA_ATTR);
+	__page_frag_cache_drain(rx_buffer->page,
+				rx_buffer->pagecnt_bias);
+
+	//if (ixgbevf_can_reuse_rx_page(rx_buffer)) {
 		/* hand second half of page back to the ring */
-		ixgbevf_reuse_rx_page(rx_ring, rx_buffer);
+		/*ixgbevf_reuse_rx_page(rx_ring, rx_buffer);
 	} else {
 		if (IS_ERR(skb))
 			/* We are not reusing the buffer so unmap it and free
 			 * any references we are holding to it
 			 */
-			dma_unmap_page_attrs(rx_ring->dev, rx_buffer->dma,
-					     ixgbevf_rx_pg_size(rx_ring),
-					     DMA_FROM_DEVICE,
-					     IXGBEVF_RX_DMA_ATTR);
-		__page_frag_cache_drain(rx_buffer->page,
-					rx_buffer->pagecnt_bias);
-	}
+			
+	//}
 
 	/* clear contents of rx_buffer */
 	rx_buffer->page = NULL;
