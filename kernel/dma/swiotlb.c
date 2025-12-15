@@ -1383,6 +1383,47 @@ static unsigned long mem_used(struct io_tlb_mem *mem)
 
 #endif /* CONFIG_DEBUG_FS */
 
+static unsigned long last_logged_mb_used = 0;
+
+/**
+ * log_swiotlb_usage() - Log SWIOTLB usage when MB thresholds are reached
+ * @mem:	Software IO TLB allocator
+ * @dev:	Device making the allocation request
+ * @requested_size: Size of the current allocation request
+ */
+static void log_swiotlb_usage(struct io_tlb_mem *mem, struct device *dev, size_t requested_size, bool unmapped)
+{
+    unsigned long total_slots = mem->nslabs;
+    unsigned long used_slots = mem_used(mem);
+    unsigned long free_slots = total_slots - used_slots;
+    unsigned long total_mb = (total_slots << IO_TLB_SHIFT) >> 20;  /* Total MB */
+    unsigned long used_mb = (used_slots << IO_TLB_SHIFT) >> 20;    /* Used MB */
+    unsigned long free_mb = (free_slots << IO_TLB_SHIFT) >> 20;    /* Free MB */
+    unsigned long freed_mb = (requested_size >> 20);              /* Freed MB */
+    
+	if (used_mb > last_logged_mb_used) {
+		const char *device_name = dev ? dev_name(dev) : "unknown";
+		
+		pr_info("SWIOTLB: %s requesting %zu bytes - Used: %lu/%lu MB (%lu%%), Free: %lu MB, Slots used: %lu/%lu\n",
+			device_name,
+			requested_size,
+			used_mb, 
+			total_mb,
+			total_mb > 0 ? (used_mb * 100) / total_mb : 0,
+			free_mb,
+			used_slots,
+			total_slots);
+		
+		last_logged_mb_used = used_mb;
+		
+		/* Warn when getting close to full */
+		if (used_mb > (total_mb * 90) / 100) {
+			pr_warn("SWIOTLB: %s - WARNING: Over 90%% full! (%lu/%lu MB used)\n",
+				device_name, used_mb, total_mb);
+		}
+	}
+}
+
 /**
  * swiotlb_tbl_map_single() - bounce buffer map a single contiguous physical area
  * @dev:		Device which maps the buffer.
@@ -1447,6 +1488,10 @@ phys_addr_t swiotlb_tbl_map_single(struct device *dev, phys_addr_t orig_addr,
 
 	offset = swiotlb_align_offset(dev, alloc_align_mask, orig_addr);
 	size = ALIGN(mapping_size + offset, alloc_align_mask + 1);
+
+
+	log_swiotlb_usage(mem, dev, mapping_size, false);
+
 	index = swiotlb_find_slots(dev, orig_addr, size, alloc_align_mask,
 				   &pool);
 	if (index == -1) {
